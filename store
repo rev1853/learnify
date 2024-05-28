@@ -1,0 +1,17 @@
+#!/bin/bash
+
+from=${3:-testing}
+price=28.325uluna
+node=tcp://localhost:26657
+
+if [ "$2" == "rebel-2" ]; then
+  from=main
+  node=tcp://81.169.136.147:26657
+elif [ "$2" == "columbus-5" ]; then
+  from=main
+  price=28.325uluna
+  node=https://terra-classic-rpc.publicnode.com:443
+fi
+
+terrad tx wasm upload "$1" --from $from --chain-id "$2" \
+  --gas auto --gas-adjustment 1.1 --gas-prices "$price" --node "$node" -y

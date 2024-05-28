@@ -1,0 +1,37 @@
+[workspace]
+members = ["contracts/*", "packages/*"]
+resolver = "2"
+
+[package]
+name = "learnify"
+version = "0.1.0"
+edition = "2021"
+
+[workspace.package]
+version = "1.0.0"
+edition = "2021"
+
+[workspace.dependencies]
+cosmwasm-std    = "=1.2.1"
+cw-utils        = "1.0.1"
+cosmwasm-schema = "1.2.1"
+cw-storage-plus = "1.1.0"
+cosmwasm-storage = "1.2.1"
+cw2 = "1.1.0"
+cw20 = "0.13.2"
+schemars = "0.8.11"
+serde = { version = "1.0.152", default-features = false, features = ["derive"] }
+thiserror = "1.0.50"
+semver = "1.0.0"
+serde-json-wasm = "0.5.1"
+
+[profile.release]
+opt-level = 's'
+debug = false
+rpath = false
+lto = true
+debug-assertions = false
+codegen-units = 1
+panic = 'abort'
+incremental = false
+overflow-checks = true
