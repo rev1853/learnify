@@ -1,5 +1,5 @@
 [package]
-name = "example"
+name = "token_burner"
 version = { workspace = true }
 edition = { workspace = true }
 

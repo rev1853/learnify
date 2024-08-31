@@ -1,7 +1,14 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Empty, Uint128};
+use cosmwasm_std::{Binary, Empty, Uint128};
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    Burn (Empty),
+    Receive (ReceiveParams)
+}
+
+#[cw_serde]
+pub struct ReceiveParams {
+    pub sender: String,
+    pub amount: Uint128,
+    pub msg: Binary,
 }

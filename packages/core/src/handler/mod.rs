@@ -1,6 +1,12 @@
-pub mod execute_handler;
-pub mod instantiate_handler;
-pub mod migrate_handler;
-pub mod query_handler;
-pub mod reply_handler;
-pub mod asset_execute_handler;
+mod asset_execute_handler;
+pub use asset_execute_handler::AssetExecuteHandler;
+mod execute_handler;
+pub use execute_handler::ExecuteHandler;
+mod instantiate_handler;
+pub use instantiate_handler::InstantiateHandler;
+mod migrate_handler;
+pub use migrate_handler::MigrateHandler;
+mod query_handler;
+pub use query_handler::QueryHandler;
+mod reply_handler;
+pub use reply_handler::ReplyHandler;

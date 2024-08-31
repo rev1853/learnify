@@ -1,5 +1,5 @@
-use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
 use crate::error::ContractResult;
+use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
 
 pub trait ExecuteHandler<T, S> {
     fn handle(
@@ -7,6 +7,6 @@ pub trait ExecuteHandler<T, S> {
         env: Env,
         info: MessageInfo,
         state: S,
-        msg: T
+        msg: T,
     ) -> ContractResult<Response>;
 }

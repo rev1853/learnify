@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/learnify.iml" filepath="$PROJECT_DIR$/.idea/learnify.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/token_bot_smartcontract.iml" filepath="$PROJECT_DIR$/.idea/token_bot_smartcontract.iml" />
     </modules>
   </component>
 </project>

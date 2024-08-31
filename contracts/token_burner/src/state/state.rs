@@ -1,14 +1,16 @@
-use cw_storage_plus::Item;
-use crate::state::config::Config;
+use cosmwasm_std::Uint128;
+use cw_storage_plus::{Item, Map};
 
 pub struct State<'a> {
-    pub config: Item<'a, Config>
+    pub token_address: Item<'a, String>,
+    pub leaderboard: Map<'a, String, Uint128>,
 }
 
 impl<'a> State<'a> {
     pub fn new() -> Self {
         return Self {
-            config: Item::new("CONFIG")
-        }
+            token_address: Item::new("CONFIG"),
+            leaderboard: Map::new("LEADERBOARD"),
+        };
     }
 }

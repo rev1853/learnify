@@ -1,198 +1,173 @@
-use std::str::FromStr;
-use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{BankMsg, Coin, CosmosMsg, Decimal, MessageInfo, to_binary, Uint128, WasmMsg};
-use cw20::Cw20ExecuteMsg;
 use crate::error::{ContractError, ContractResult};
 use crate::modules::decimal::DecimalExt;
-use crate::modules::share::Share;
+use cosmwasm_schema::cw_serde;
+use cosmwasm_std::{
+    coin, to_binary, Addr, BankMsg, Coin, CosmosMsg, Decimal, MessageInfo, Response, Uint128,
+    WasmMsg,
+};
+use cw20::{Cw20Coin, Cw20ExecuteMsg, Denom};
+use std::ops::{Add, Div, Mul, Sub};
+use std::str::FromStr;
 
 #[cw_serde]
-pub enum Asset {
-    Coin(Coin),
-    Token {
-        address: String,
-        amount: Uint128
-    }
+pub struct Asset {
+    pub denom: Denom,
+    pub amount: Uint128,
 }
 
 impl Asset {
     pub fn is_cw20(&self) -> bool {
-        return match self {
-            Asset::Coin(_) => false,
-            Asset::Token { .. } => true
-        }
-    }
-
-    pub fn to_transfer_msg(&self, recipient: String) -> CosmosMsg {
-        return if self.is_cw20() {
-            CosmosMsg::Wasm(
-                WasmMsg::Execute {
-                    contract_addr: self.cw20_address().unwrap(),
-                    msg: to_binary(&Cw20ExecuteMsg::Transfer {
-                        amount: self.amount(),
-                        recipient
-                    }).unwrap(),
-                    funds: vec![],
-                }
-            )
-        } else {
-          CosmosMsg::Bank(
-              BankMsg::Send {
-                  to_address: recipient,
-                  amount: vec![self.coin().unwrap()]
-              }
-          )
-        }
+        return match self.denom {
+            Denom::Native(_) => false,
+            Denom::Cw20(_) => true,
+        };
     }
 
     pub fn cw20_address(&self) -> Option<String> {
-        return match self {
-            Asset::Coin(_) => None,
-            Asset::Token { address, .. } => Some(address.to_owned())
-        }
-    }
-
-    pub fn amount(&self) -> Uint128 {
-        return match self {
-            Asset::Coin(coin) => coin.amount.to_owned(),
-            Asset::Token { amount, .. } => amount.to_owned()
-        }
+        return match self.denom.clone() {
+            Denom::Native(_) => None,
+            Denom::Cw20(address) => Some(address.to_string()),
+        };
     }
 
     pub fn coin(&self) -> Option<Coin> {
-        return match self {
-            Asset::Coin(coin) => Some(coin.to_owned()),
-            Asset::Token { .. } => None
-        }
+        return match self.denom.clone() {
+            Denom::Native(denom) => Some(coin(self.amount.into(), denom)),
+            Denom::Cw20(_) => None,
+        };
     }
 
-    pub fn from_info(info: &MessageInfo) -> Vec<Asset> {
-        return info.funds.to_owned().iter().map(|el| Asset::Coin(el.to_owned())).collect()
+    pub fn spendable(mut self, is_classic: bool) -> Self {
+        return if is_classic && !self.is_cw20() {
+            self.clone()
+                .multiply_decimal(&Decimal::from_str("0.995").unwrap())
+        } else {
+            self
+        };
     }
+}
 
-    pub fn is_match(&self, assets: &Vec<Asset>) -> bool {
-        assets.iter().find(|el| self.compare_asset(el)).is_some()
+impl From<Coin> for Asset {
+    fn from(value: Coin) -> Self {
+        return Asset {
+            denom: Denom::Native(value.denom),
+            amount: value.amount,
+        };
     }
+}
 
-    fn compare_asset(&self, asset: &Asset) -> bool {
-        return match (self, asset) {
-            (Asset::Coin(coin1), Asset::Coin(coin2)) => coin1.denom == coin2.denom && coin1.amount.eq(&coin2.amount),
-            (
-                Asset::Token {address: address1, amount: amount1},
-                Asset::Token { address: address2, amount: amount2}
-            ) => address1 == address2 && amount1.eq(amount2),
-            _ => false
-        }
-    }
-
-    pub fn to_zero(&self) -> Asset {
-        return match self {
-            Asset::Coin(coin) => Asset::Coin(Coin::new(0, coin.denom.clone())),
-            Asset::Token { address, .. } => Asset::Token { address: address.clone(), amount: Uint128::new(0) }
-        }
-    }
-
-    pub fn is_zero(&self) -> bool {
-        return match self {
-            Asset::Coin(coin) => coin.amount.is_zero(),
-            Asset::Token { amount, .. } => amount.is_zero()
-        }
+impl From<Cw20Coin> for Asset {
+    fn from(value: Cw20Coin) -> Self {
+        return Asset {
+            denom: Denom::Cw20(Addr::unchecked(value.address)),
+            amount: value.amount,
+        };
     }
 }
 
 pub trait AssetOperation {
-    fn divide_decimal(&self, decimal: &Decimal) -> Asset;
-    fn multiply_decimal(&self, decimal: &Decimal) -> Asset;
-    fn plus(&self, other: &Asset) -> ContractResult<Asset>;
-    fn minus(&self, other: &Asset) -> ContractResult<Asset>;
+    fn divide_decimal(self, decimal: &Decimal) -> Asset;
+    fn multiply_decimal(self, decimal: &Decimal) -> Asset;
+    fn plus(self, other: &Asset) -> Asset;
+    fn minus(self, other: &Asset) -> Asset;
 }
 
 impl AssetOperation for Asset {
-    fn divide_decimal(&self, decimal: &Decimal) -> Asset {
-        return match self {
-            Asset::Coin(coin) => {
-                let amount = (Decimal::from_num(coin.amount) / decimal).to_uint_floor().u128();
-                Asset::Coin(Coin::new(amount, coin.denom.clone()))
+    fn divide_decimal(mut self, decimal: &Decimal) -> Self {
+        self.amount = Decimal::from_num(self.amount).div(decimal).to_uint_floor();
+        self
+    }
+
+    fn multiply_decimal(mut self, decimal: &Decimal) -> Self {
+        self.amount = Decimal::from_num(self.amount).mul(decimal).to_uint_floor();
+        self
+    }
+
+    fn plus(mut self, other: &Asset) -> Self {
+        if other.denom.eq(&other.denom) {
+            self.amount = self.amount.add(other.amount);
+        }
+        self
+    }
+
+    fn minus(mut self, other: &Asset) -> Self {
+        if other.denom.eq(&other.denom) {
+            self.amount = self.amount.sub(other.amount);
+        }
+        self
+    }
+}
+
+#[cw_serde]
+pub struct Assets {
+    pub assets: Vec<Asset>,
+}
+
+impl Default for Assets {
+    fn default() -> Self {
+        Assets {
+            assets: vec![],
+        }
+    }
+}
+
+impl Assets {
+    pub fn add_asset(mut self, new_asset: Asset) -> Self {
+        for asset in self.assets.iter_mut() {
+            if asset.denom == new_asset.denom {
+                asset.amount += new_asset.amount;
+                return self;
             }
-            Asset::Token { address, amount } => {
-                Asset::Token {
-                    address: address.clone(),
-                    amount: (Decimal::from_num(amount.clone()) / decimal).to_uint_floor()
+        }
+
+        self.assets.push(new_asset);
+        self
+    }
+
+    pub fn find_denom(&self, denom: &Denom) -> Option<&Asset> {
+        self.assets.iter().find(|&asset| asset.denom == *denom)
+    }
+
+    pub fn to_transfer_messages(&self, recipient: &String) -> ContractResult<Vec<CosmosMsg>> {
+        let mut messages: Vec<CosmosMsg> = vec![];
+        let mut coins: Vec<Coin> = vec![];
+
+        for asset in &self.assets {
+            match &asset.denom {
+                Denom::Native(denom) => {
+                    coins.push(Coin {
+                        denom: denom.clone(),
+                        amount: asset.amount,
+                    })
+                }
+                Denom::Cw20(contract_address) => {
+                    let transfer_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+                        contract_addr: contract_address.to_string(),
+                        msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                            recipient: recipient.clone(),
+                            amount: asset.amount,
+                        })?,
+                        funds: vec![],
+                    });
+                    messages.push(transfer_msg);
                 }
             }
         }
-    }
-
-    fn multiply_decimal(&self, decimal: &Decimal) -> Asset {
-        return match self {
-            Asset::Coin(coin) => {
-                let amount = (Decimal::from_num(coin.amount) * decimal).to_uint_floor().u128();
-                Asset::Coin(Coin::new(amount, coin.denom.clone()))
-            }
-            Asset::Token { address, amount } => {
-                Asset::Token {
-                    address: address.clone(),
-                    amount: (Decimal::from_num(amount.clone()) * decimal).to_uint_floor()
-                }
-            }
+        if coins.len() > 0 {
+            messages.push(CosmosMsg::Bank(BankMsg::Send {
+                amount: coins,
+                to_address: recipient.clone()
+            }))
         }
-    }
 
-    fn plus(&self, other: &Asset) -> ContractResult<Asset> {
-        return match (self, other) {
-            (Asset::Coin(coin1), Asset::Coin(coin2)) => Ok(Asset::Coin(Coin::new(coin1.amount.u128() + coin2.amount.clone().u128(), coin1.denom.clone()))),
-            (
-                Asset::Token {address, amount: amount1},
-                Asset::Token { amount: amount2, ..},
-            ) => Ok(Asset::Token { address: address.clone(), amount: amount1.clone() + amount2.clone() }),
-            _ => Err(ContractError::CustomError(String::from("Asset must be the same to add")))
-        }
-    }
-
-    fn minus(&self, other: &Asset) -> ContractResult<Asset> {
-        return match (self, other) {
-            (Asset::Coin(coin1), Asset::Coin(coin2)) => Ok(Asset::Coin(Coin::new(coin1.amount.u128() - coin2.amount.clone().u128(), coin1.denom.clone()))),
-            (
-                Asset::Token {address, amount: amount1},
-                Asset::Token { amount: amount2, ..},
-            ) => Ok(Asset::Token { address: address.clone(), amount: amount1.clone() - amount2.clone() }),
-            _ => Err(ContractError::CustomError(String::from("Asset must be the same to subtract")))
-        }
+        Ok(messages)
     }
 }
 
-pub trait AssetsImpl {
-    fn match_one(&self, assets: &Vec<Asset>) -> ContractResult<Asset>;
-}
-
-impl AssetsImpl for Vec<Asset> {
-    fn match_one(&self, assets: &Vec<Asset>) -> ContractResult<Asset> {
-        let assets1 = self.to_owned();
-        let asset = assets1.iter().find(|el| el.is_match(assets));
-        return match asset {
-            None => Err(ContractError::None(format!("Required assets: {}", serde_json_wasm::to_string(assets).unwrap()))),
-            Some(asset) => Ok(asset.to_owned())
-        }
-    }
-}
-
-pub fn calculate_shares(fund: &Asset, shares: &Vec<Share>) -> (Asset, Vec<CosmosMsg>) {
-    let mut amount = fund.to_zero();
-    let msgs = shares.iter()
-        .filter(|el| !el.percentage.is_zero())
-        .map(|el| {
-            let share_amount = &fund.multiply_decimal(&el.percentage);
-            amount = amount.plus(share_amount).unwrap();
-            return share_amount.to_transfer_msg(el.address.clone())
-        })
-        .collect();
-    return (amount, msgs)
-}
-
-pub fn spendable_asset(asset: &Asset, is_classic: bool) -> Asset {
-    return if is_classic && !asset.is_cw20() {
-        asset.multiply_decimal(&Decimal::from_str("0.995").unwrap())
-    } else {
-        asset.clone()
+impl From<Vec<Coin>> for Assets {
+    fn from(value: Vec<Coin>) -> Self {
+        return Assets {
+            assets: value.iter().map(|el| Asset::from(el.clone())).collect(),
+        };
     }
 }

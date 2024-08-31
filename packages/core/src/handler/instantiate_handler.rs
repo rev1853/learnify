@@ -1,5 +1,5 @@
+use crate::error::ContractResult;
 use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
-use crate::error::{ContractResult};
 
 pub trait InstantiateHandler<T, S> {
     fn handle(

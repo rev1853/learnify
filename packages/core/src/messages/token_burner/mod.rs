@@ -2,6 +2,9 @@ mod instantiate_msg;
 pub use instantiate_msg::InstantiateMsg;
 mod execute_msg;
 pub use execute_msg::ExecuteMsg;
+pub use execute_msg::ReceiveParams;
+mod receive_msg;
+pub use receive_msg::ReceiveMsg;
 mod query_msg;
 pub use query_msg::QueryMsg;
-
+pub use query_msg::leaderboard as query_leaderboard;

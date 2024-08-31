@@ -1,4 +1,9 @@
-pub mod contract;
+mod contract;
+mod state;
 #[cfg(test)]
 pub mod testing;
-pub mod state;
+mod instantiate;
+mod execute;
+mod query;
+
+pub use core;

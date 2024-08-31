@@ -1,6 +1,6 @@
 use cosmwasm_std::StdError;
-use thiserror::Error;
 use cw_utils::PaymentError;
+use thiserror::Error;
 
 pub type ContractResult<T> = Result<T, ContractError>;
 

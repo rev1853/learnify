@@ -2,11 +2,6 @@
 members = ["contracts/*", "packages/*"]
 resolver = "2"
 
-[package]
-name = "learnify"
-version = "0.1.0"
-edition = "2021"
-
 [workspace.package]
 version = "1.0.0"
 edition = "2021"
@@ -24,6 +19,8 @@ serde = { version = "1.0.152", default-features = false, features = ["derive"] }
 thiserror = "1.0.50"
 semver = "1.0.0"
 serde-json-wasm = "0.5.1"
+core = { path = "./packages/core" }
+
 
 [profile.release]
 opt-level = 's'

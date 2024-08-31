@@ -1,6 +1,6 @@
-use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
 use crate::error::ContractResult;
-use crate::modules::asset::Asset;
+use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
+use crate::modules::Assets;
 
 pub trait AssetExecuteHandler<T, S> {
     fn handle(
@@ -9,7 +9,6 @@ pub trait AssetExecuteHandler<T, S> {
         info: MessageInfo,
         state: S,
         msg: T,
-        assets: Vec<Asset>
+        assets: Assets,
     ) -> ContractResult<Response>;
-
 }

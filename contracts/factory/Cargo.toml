@@ -1,5 +1,5 @@
 [package]
-name = "example"
+name = "factory"
 version = { workspace = true }
 edition = { workspace = true }
 

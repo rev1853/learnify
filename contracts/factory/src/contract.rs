@@ -1,17 +1,18 @@
-use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{DepsMut, Env, MessageInfo, Response, StdError};
-
-#[cw_serde]
-pub struct InstantiateParams {}
+use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
+use crate::core::error::ContractResult;
+use crate::core::handler::InstantiateHandler;
+use crate::core::messages::factory::InstantiateMsg;
+use crate::instantiate::create_handler::CreateHandler;
+use crate::state::state::State;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    _deps: DepsMut,
-    _env: Env,
-    _info: MessageInfo,
-    _msg: InstantiateParams,
-) -> Result<Response, StdError> {
-    return Ok(Response::new());
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: InstantiateMsg,
+) -> ContractResult<Response> {
+    return CreateHandler::handle(deps, env, info, State::new(), msg)
 }
